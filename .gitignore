@@ -1,0 +1,7 @@
+# Gradle
+   backend/.gradle/
+   backend/build/
+   backend/bin/
+   
+   # Gradle wrapper (optional - usually committed)
+   # backend/gradle/

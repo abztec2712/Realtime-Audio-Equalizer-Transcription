@@ -220,11 +220,15 @@ const AudioVisualizer: React.FC<VisualizerProps> = ({ canvasWidth, canvasHeight,
       />
       
       {/* Control Button */}
-      {!isReady && (
+      {isReady && (
+    <React.Fragment> // <-- Wrap adjacent elements in a Fragment
         <button id="startButton" onClick={initAudioAndStream}>
-          Start Microphone, Visualizer, & Stream
+            Start Microphone, Visualizer, & Stream
         </button>
-      )}
+        <p>Loading...</p>
+    </React.Fragment>
+  )}
+  
       {isReady && <p className="status-message">Visualizer Active. Streaming audio chunks...</p>}
 
       [cite_start]{/* Transcription Output [cite: 16] */}

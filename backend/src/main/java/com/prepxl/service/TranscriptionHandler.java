@@ -1,13 +1,13 @@
-package com.prepxl.service; // Use the same package as the service
+package com.prepxl.service;
 
+import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.WebSocketSession;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-
-import java.nio.ByteBuffer;
 
 @Component
 public class TranscriptionHandler implements WebSocketHandler {
@@ -23,14 +23,15 @@ public class TranscriptionHandler implements WebSocketHandler {
     public Mono<Void> handle(WebSocketSession session) {
         
         // 1. INPUT STREAM: Map incoming WebSocket messages (binary audio) to a Flux<byte[]>
-        [cite_start]// This handles "Accept audio from the frontend in small continuous chunks." [cite: 14]
+        // This handles "Accept audio from the frontend in small continuous chunks."
         Flux<byte[]> audioChunkFlux = session.receive()
             .filter(message -> message.getType() == WebSocketMessage.Type.BINARY)
             .map(WebSocketMessage::getPayload)
-            .map(buffer -> {
-                // Extract byte array from ByteBuffer payload
-                byte[] audioChunk = new byte[buffer.remaining()];
-                buffer.get(audioChunk);
+            .map(dataBuffer -> {
+                // Convert DataBuffer to byte array
+                byte[] audioChunk = new byte[dataBuffer.readableByteCount()];
+                dataBuffer.read(audioChunk);
+                DataBufferUtils.release(dataBuffer); // Important: release the buffer
                 return audioChunk;
             })
             .doOnError(e -> System.err.println("Error receiving audio stream: " + e.getMessage()));
@@ -40,7 +41,7 @@ public class TranscriptionHandler implements WebSocketHandler {
         Flux<String> transcriptionOutput = transcriptionService.transcribeStream(audioChunkFlux);
 
         // 3. OUTPUT STREAM: Map the Flux<String> transcription back to WebSocket messages
-        [cite_start]// This fulfills "Receive partial transcription from Gemini and stream it back to the client in real-time." [cite: 16]
+        // This fulfills "Receive partial transcription from Gemini and stream it back to the client in real-time."
         return session.send(transcriptionOutput
             // Use session.textMessage for streaming text transcription
             .map(session::textMessage) 

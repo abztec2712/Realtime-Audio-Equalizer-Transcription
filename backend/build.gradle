@@ -18,8 +18,8 @@ repositories {
 // --- JAVA VERSION FIX (Using the simple version property) ---
 java {
     // We use VERSION_22 because you have JDK 22 installed.
-    sourceCompatibility = JavaVersion.VERSION_22 
-    targetCompatibility = JavaVersion.VERSION_22 
+    sourceCompatibility = JavaVersion.VERSION_21 
+    targetCompatibility = JavaVersion.VERSION_21 
 }
 // -----------------------------------------------------------
 

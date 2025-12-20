@@ -5,3 +5,7 @@
    
    # Gradle wrapper (optional - usually committed)
    # backend/gradle/
+
+# Application.properties
+   backend/src/main/resources/application.properties
+   backend/.env

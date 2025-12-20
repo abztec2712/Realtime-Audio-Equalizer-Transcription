@@ -8,7 +8,7 @@ function App() {
 
   return (
     <div className="container">
-      <h1>Circular Audio Equalizer & Real-Time Transcription</h1>
+      <h1>Audio Equalizer & Real-Time Transcription</h1>
       {/* Set canvas size and pass the backend WebSocket URL */}
       <AudioVisualizer 
         canvasWidth={400} 

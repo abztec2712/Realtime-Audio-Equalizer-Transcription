@@ -21,7 +21,7 @@ public class CorsWebConfig implements WebFluxConfigurer {
         String allowedOrigins = env.getProperty("app.cors.allowed-origins");
 
         registry.addMapping("/**") // Apply to all endpoints
-                .allowedOrigins(allowedOrigins) // Use the property from application.properties
+                .allowedOrigins("http://localhost:5174", "http://localhost:3000", "http://localhost:5173")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true);

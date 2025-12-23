@@ -1,36 +1,30 @@
 // backend/build.gradle
 
 plugins {
-    // This plugin applies the "java" plugin and dependency management automatically
     id 'org.springframework.boot' version '3.2.0'
     id 'io.spring.dependency-management' version '1.1.4'
-    id 'java' // Explicitly including java can sometimes help, though Spring Boot applies it
+    id 'java' 
 }
 
 group = 'com.prepxl'
 version = '0.0.1-SNAPSHOT'
 
-// --- REPOSITORIES FIX (Must be here) ---
 repositories {
     mavenCentral() 
 }
 
-// --- JAVA VERSION FIX (Using the simple version property) ---
 java {
-    // We use VERSION_22 because you have JDK 22 installed.
+    // Matches your system JDK 21
     sourceCompatibility = JavaVersion.VERSION_21 
     targetCompatibility = JavaVersion.VERSION_21 
 }
-// -----------------------------------------------------------
 
 dependencies {
-    // Spring Boot provides a BOM (Bill of Materials) for all starter versions
-    // These starters bring in all transitive dependencies needed for the modules:
-
+    // Standard WebFlux for reactive streaming
     implementation 'org.springframework.boot:spring-boot-starter-webflux' 
 
-    // Required for configuring CORS (part of the security setup)
-    // implementation 'org.springframework.boot:spring-boot-starter-security' 
+    // Essential for JSON parsing in GeminiLiveClient
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
 
     // Testing dependencies
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

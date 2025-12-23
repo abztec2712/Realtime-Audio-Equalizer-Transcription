@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 
 interface Props {
   audioData?: Uint8Array;
+  isHovered: boolean;
 }
 
 const InteractiveBackground: React.FC<Props> = ({ audioData }) => {
@@ -14,6 +15,7 @@ const InteractiveBackground: React.FC<Props> = ({ audioData }) => {
     if (!ctx) return;
 
     let animationFrameId: number;
+    let phase = 0;
 
     const resize = () => {
       canvas.width = window.innerWidth;
@@ -23,43 +25,39 @@ const InteractiveBackground: React.FC<Props> = ({ audioData }) => {
     window.addEventListener('resize', resize);
     resize();
 
-    // Create static positions for background "Tactical Orbs"
-    const orbs = [
-      { x: 0.15, y: 0.2, color: '#004d98', size: 100 }, // Top Left Blue
-      { x: 0.85, y: 0.8, color: '#a50044', size: 120 }, // Bottom Right Garnet
-      { x: 0.8, y: 0.15, color: '#edbb00', size: 60 },  // Top Right Gold
-    ];
-
     const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#050507';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
       
-      // Calculate average volume from audioData
       const avgVolume = audioData 
         ? audioData.reduce((a, b) => a + b) / audioData.length 
         : 0;
 
-      orbs.forEach(orb => {
-        const pulse = (avgVolume / 255) * 150; // Orbs grow based on sound
-        const xPos = orb.x * canvas.width;
-        const yPos = orb.y * canvas.height;
+      phase += 0.008; // Rhythmic speed
+      
+      // Heartbeat pulse calculation for waves
+      const heartbeat = Math.pow(Math.sin(phase * 2), 10) * 40; 
+      const intensity = 1 + (avgVolume / 255) * 2;
 
-        const gradient = ctx.createRadialGradient(
-          xPos, yPos, 0, 
-          xPos, yPos, orb.size + pulse
-        );
-        
-        gradient.addColorStop(0, orb.color + '44'); // 44 is transparency
-        gradient.addColorStop(1, 'transparent');
+      const waves = [
+        { color: '#004d98', amp: 40 + heartbeat, freq: 0.002, speed: 1 },
+        { color: '#a50044', amp: 25 + heartbeat, freq: 0.003, speed: -0.8 },
+        { color: '#edbb00', amp: 12 + heartbeat, freq: 0.005, speed: 0.5 }
+      ];
 
-        ctx.fillStyle = gradient;
+      waves.forEach((wave) => {
         ctx.beginPath();
-        ctx.arc(xPos, yPos, orb.size + pulse, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = wave.color;
+        ctx.globalAlpha = 0.12;
 
-        // Add small tech-circles around orbs
-        ctx.strokeStyle = orb.color + '22';
-        ctx.beginPath();
-        ctx.arc(xPos, yPos, (orb.size + pulse) * 1.2, 0, Math.PI * 2);
+        for (let x = 0; x < canvas.width; x += 4) {
+          const y = (canvas.height * 0.5) + 
+                    Math.sin(x * wave.freq + (phase * wave.speed)) * (wave.amp * intensity);
+          
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
         ctx.stroke();
       });
 

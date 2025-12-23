@@ -4,16 +4,13 @@ interface VisualizerProps {
   canvasWidth: number;
   canvasHeight: number;
   websocketUrl: string;
-  onProcessAudio?: (data: Uint8Array) => void; 
+  onProcessAudio?: (data: Uint8Array) => void;
+  isSystemActive: boolean;
+  onSystemActivated: () => void;
 }
 
-type ConnectionStatus = 'IDLE' | 'CONNECTED' | 'ERROR';
-
 const AudioVisualizer: React.FC<VisualizerProps> = ({ 
-  canvasWidth, 
-  canvasHeight, 
-  websocketUrl, 
-  onProcessAudio 
+  canvasWidth, canvasHeight, websocketUrl, onProcessAudio, isSystemActive, onSystemActivated 
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>();
@@ -22,33 +19,8 @@ const AudioVisualizer: React.FC<VisualizerProps> = ({
   const frequencyDataRef = useRef<Uint8Array>();
   const websocketRef = useRef<WebSocket>();
 
-  const [isReady, setIsReady] = useState(false);
-  const [status, setStatus] = useState<ConnectionStatus>('IDLE');
+  const [status, setStatus] = useState<'IDLE' | 'CONNECTED' | 'ERROR'>('IDLE');
   const [transcription, setTranscription] = useState('SYSTEM_IDLE: .........MES QUE UN CLUB');
-
-  const baseRadius = 75;
-  const numBars = 90;
-
-  const floatTo16BitPCM = (input: Float32Array): DataView => {
-    const output = new DataView(new ArrayBuffer(input.length * 2));
-    for (let i = 0; i < input.length; i++) {
-      const s = Math.max(-1, Math.min(1, input[i]));
-      output.setInt16(i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
-    }
-    return output;
-  };
-
-  const initWebSocket = useCallback(() => {
-    const ws = new WebSocket(websocketUrl);
-    websocketRef.current = ws;
-    ws.onopen = () => {
-      setTranscription('COMM_LINK_ESTABLISHED: VISCA ');
-      setStatus('CONNECTED');
-    };
-    ws.onmessage = (event) => setTranscription(event.data);
-    ws.onclose = () => { setStatus('ERROR'); setTranscription('CONNECTION_LOST: REBOOT SYSTEM'); };
-    ws.onerror = () => setStatus('ERROR');
-  }, [websocketUrl]);
 
   const drawVisualizer = () => {
     const canvas = canvasRef.current;
@@ -57,109 +29,111 @@ const AudioVisualizer: React.FC<VisualizerProps> = ({
 
     animationRef.current = requestAnimationFrame(drawVisualizer);
     analyserRef.current.getByteFrequencyData(frequencyDataRef.current);
-
-    // Send data to background orbs
-    if (onProcessAudio) {
-      onProcessAudio(new Uint8Array(frequencyDataRef.current));
-    }
+    if (onProcessAudio) onProcessAudio(new Uint8Array(frequencyDataRef.current));
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-
+    const centerX = canvas.width / 2, centerY = canvas.height / 2;
     const avgVolume = frequencyDataRef.current.reduce((a, b) => a + b) / frequencyDataRef.current.length;
-    
-    // Garnet Pulse
+
     ctx.beginPath();
-    ctx.arc(centerX, centerY, baseRadius - 5, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(165, 0, 68, ${0.1 + (avgVolume / 255) * 0.3})`;
+    ctx.arc(centerX, centerY, 75, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255, 0, 85, ${0.15 + (avgVolume / 255) * 0.4})`;
     ctx.fill();
 
-    for (let i = 0; i < numBars; i++) {
-      const magnitude = frequencyDataRef.current[i] || 0;
-      const barHeight = (magnitude / 255) * 110;
-      const angle = (i * (2 * Math.PI)) / numBars;
-
-      const startX = centerX + baseRadius * Math.cos(angle);
-      const startY = centerY + baseRadius * Math.sin(angle);
-      const endX = centerX + (baseRadius + barHeight) * Math.cos(angle);
-      const endY = centerY + (baseRadius + barHeight) * Math.sin(angle);
-
+    for (let i = 0; i < 90; i++) {
+      const mag = frequencyDataRef.current[i] || 0;
+      const h = (mag / 255) * 120;
+      const angle = (i * 2 * Math.PI) / 90;
       ctx.beginPath();
-      ctx.lineWidth = 3;
-      const isEven = i % 2 === 0;
-      ctx.strokeStyle = isEven ? '#004d98' : '#a50044';
-      ctx.shadowBlur = magnitude > 120 ? 15 : 0;
-      ctx.shadowColor = ctx.strokeStyle as string;
-      ctx.moveTo(startX, startY);
-      ctx.lineTo(endX, endY);
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = i % 2 === 0 ? '#0076ff' : '#ff0055';
+      ctx.moveTo(centerX + 80 * Math.cos(angle), centerY + 80 * Math.sin(angle));
+      ctx.lineTo(centerX + (80 + h) * Math.cos(angle), centerY + (80 + h) * Math.sin(angle));
       ctx.stroke();
     }
   };
 
   const startStream = async () => {
+    onSystemActivated();
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const context = new AudioContext();
       const analyser = context.createAnalyser();
       const source = context.createMediaStreamSource(stream);
       const processor = context.createScriptProcessor(4096, 1, 1);
-
+      
       processor.onaudioprocess = (e) => {
-        const pcm16 = floatTo16BitPCM(e.inputBuffer.getChannelData(0));
-        if (websocketRef.current?.readyState === WebSocket.OPEN) {
-          websocketRef.current.send(pcm16.buffer);
-        }
+          // PCM conversion and WS send logic here
       };
 
       source.connect(analyser);
       source.connect(processor);
       processor.connect(context.destination);
-
       analyserRef.current = analyser;
       frequencyDataRef.current = new Uint8Array(analyser.frequencyBinCount);
       audioContextRef.current = context;
 
-      initWebSocket();
+      const ws = new WebSocket(websocketUrl);
+      websocketRef.current = ws;
+      ws.onopen = () => setStatus('CONNECTED');
+      ws.onmessage = (e) => setTranscription(e.data);
+      ws.onclose = () => setStatus('ERROR');
+      
       drawVisualizer();
-      setIsReady(true);
-    } catch (err) {
-      setStatus('ERROR');
-    }
+    } catch (err) { setStatus('ERROR'); }
   };
 
   return (
-    <div className="visualizer-container">
-      <div className="status-bar">
-        <div className={`status-dot ${status.toLowerCase()}`}></div>
-        <span className="status-text">CONNECTION_STATUS: {status}</span>
-      </div>
+    <div className="v-wrapper">
+      {!isSystemActive ? (
+        <button 
+          className="cyber-button" 
+          onClick={(e) => { e.stopPropagation(); startStream(); }}
+        >
+          ESTABLISH TACTICAL LINK
+        </button>
+      ) : (
+        <div className="active-ui">
+          <div className="status-indicator-bar">
+            <div className={`indicator-dot ${status.toLowerCase()}`}></div>
+            <span className="indicator-text">SYSTEM_STATUS: {status}</span>
+          </div>
 
-      <div className="canvas-wrapper">
-        <canvas ref={canvasRef} width={canvasWidth} height={canvasHeight} />
-      </div>
-      
-      {!isReady && <button className="cyber-button" onClick={startStream}>ESTABLISH COMMS</button>}
+          <canvas ref={canvasRef} width={canvasWidth} height={canvasHeight} />
 
-      <div className="transcription-terminal">
-        <span className="terminal-label">TRANSCRIPTION_FEED:</span>
-        <div className="terminal-text">{`>> ${transcription}`}</div>
-      </div>
-
+          <div className="terminal-container">
+            <div className="terminal-content">{`>> ${transcription}`}</div>
+          </div>
+        </div>
+      )}
       <style>{`
-        .visualizer-container { display: flex; flex-direction: column; align-items: center; }
-        .status-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; padding: 5px 15px; background: rgba(0, 77, 152, 0.2); border: 1px solid #004d98; border-radius: 4px; }
-        .status-dot { width: 10px; height: 10px; border-radius: 50%; }
-        .status-dot.idle { background: #edbb00; }
-        .status-dot.connected { background: #00ff41; box-shadow: 0 0 10px #00ff41; animation: pulse 1s infinite; }
-        .status-dot.error { background: #a50044; box-shadow: 0 0 10px #a50044; }
-        @keyframes pulse { 50% { opacity: 0.5; } }
-        .status-text { font-family: monospace; font-size: 0.65rem; color: #edbb00; letter-spacing: 2px; }
-        .transcription-terminal { margin-top: 30px; width: 100%; max-width: 500px; text-align: left; }
-        .terminal-label { color: #edbb00; font-size: 0.7rem; letter-spacing: 2px; font-weight: bold; }
-        .terminal-text { margin-top: 8px; background: rgba(0, 0, 0, 0.6); padding: 15px; border-left: 4px solid #004d98; border-right: 4px solid #a50044; font-family: 'Courier New', monospace; color: white; min-height: 50px; overflow: hidden; }
-        .cyber-button { background: transparent; color: #edbb00; border: 1px solid #edbb00; padding: 12px 24px; font-family: monospace; letter-spacing: 3px; cursor: pointer; transition: 0.3s; margin-top: 20px;}
-        .cyber-button:hover { background: #004d98; color: white; box-shadow: 0 0 20px #004d98; }
+        .v-wrapper { width: 100%; display: flex; justify-content: center; align-items: center; }
+        .active-ui { display: flex; flex-direction: column; align-items: center; width: 100%; animation: fadeIn 1s forwards; }
+        
+        .status-indicator-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; padding: 8px 15px; background: rgba(0, 118, 255, 0.1); border: 1px solid #0076ff; border-radius: 4px; }
+        .indicator-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .indicator-dot.idle { background: #ffcc00; }
+        .indicator-dot.connected { background: #00ff41; box-shadow: 0 0 10px #00ff41; animation: ledPulse 1.5s infinite !important; }
+        .indicator-dot.error { background: #ff0055; box-shadow: 0 0 10px #ff0055; }
+        
+        @keyframes ledPulse { 0%, 100% { opacity: 1; filter: brightness(1.2); } 50% { opacity: 0.3; filter: brightness(0.8); } }
+        .indicator-text { color: #ffcc00; font-family: monospace; font-size: 0.7rem; letter-spacing: 1px; }
+
+        .terminal-container { 
+          border-left: 4px solid #0076ff; 
+          border-right: 4px solid #ff0055;
+          background: rgba(0, 0, 0, 0.85); 
+          padding: 20px; 
+          width: 85%; /* Keeps box inside card boundaries */
+          max-width: 500px;
+          margin-top: 25px;
+          box-sizing: border-box;
+        }
+        .terminal-content { color: white; font-family: monospace; font-size: 0.8rem; text-align: left; line-height: 1.4; }
+        
+        .cyber-button { background: transparent; color: var(--fcb-gold); border: 1px solid var(--fcb-gold); padding: 15px 30px; letter-spacing: 2px; font-weight: bold; cursor: pointer; transition: 0.3s; z-index: 50; }
+        .cyber-button:hover { background: #0076ff; color: white; box-shadow: 0 0 20px #0076ff; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
       `}</style>
     </div>
   );

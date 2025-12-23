@@ -1,4 +1,10 @@
-/* App.css */
+:root {
+  --fcb-blue: #0076ff;
+  --fcb-garnet: #ff0055;
+  --fcb-gold: #ffcc00;
+  --mouse-x: 50%;
+  --mouse-y: 50%;
+}
 
 .App {
   min-height: 100vh;
@@ -6,83 +12,94 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  background-color: #050507; /* Deepest base */
   overflow: hidden;
   position: relative;
-  background-color: #050507;
+  margin: 0;
+}
+
+.card-scene {
+  width: 650px;
+  height: 750px;
+  perspective: 2000px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .glass-container {
+  width: 100%;
+  height: 100%;
   position: relative;
-  z-index: 10;
-  width: 90%;
-  max-width: 650px;
-  padding: 40px;
-  border-radius: 28px;
-  text-align: center;
-  overflow: hidden; /* Keeps internal glow inside the card */
+  transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transform-style: preserve-3d;
+  cursor: pointer;
+}
 
+.glass-container.is-flipped {
+  transform: rotateY(180deg);
+}
+
+.card-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border-radius: 30px;
+  padding: 50px;
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Enforced strict horizontal center */
+  justify-content: space-between;
+  
+  /* HIGH TRANSPARENCY: To see background waves through the card */
   background: radial-gradient(
-    circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
-    rgba(0, 77, 152, 0.4) 0%,
-    rgba(0, 20, 40, 0.9) 60%
+    circle at var(--mouse-x) var(--mouse-y),
+    rgba(0, 118, 255, 0.15) 0%, 
+    rgba(0, 5, 15, 0.3) 85% 
   );
   
-  backdrop-filter: blur(25px);
-  -webkit-backdrop-filter: blur(25px);
-  border: 1px solid rgba(165, 0, 68, 0.5);
-  
-  /* Constant subtle pulse animation */
-  box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
-  transition: transform 0.1s ease-out;
+  backdrop-filter: blur(12px) saturate(160%); /* Reduced blur for clarity */
+  border: 1px solid rgba(255, 0, 85, 0.5);
+  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.9);
+  box-sizing: border-box;
 }
 
-.internal-tech-lines {
-  position: absolute;
-  bottom: 10px;
+.card-back {
+  transform: rotateY(180deg);
+}
+
+.main-stage {
+  flex-grow: 1;
   width: 100%;
-  height: 20px;
-  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
-.line {
-  position: absolute;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, #edbb00, transparent);
-  width: 100px;
-  opacity: 0.3;
+.mes-que { color: var(--fcb-garnet); letter-spacing: 12px; font-weight: 900; font-size: 0.75rem; text-align: center; }
+.dashboard-title { color: var(--fcb-gold); letter-spacing: 5px; font-size: 1.5rem; text-transform: uppercase; margin-top: 10px; text-align: center; }
+
+.back-content-area {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  color: #fff;
+  font-family: monospace;
+  font-size: 1.1rem;
 }
 
-.l1 { bottom: 5px; left: -100px; animation: moveLine 3s infinite linear; }
-.l2 { bottom: 12px; left: -100px; animation: moveLine 5s infinite linear 1s; }
+.back-content-area strong { color: var(--fcb-gold); }
+.click-to-return { font-size: 0.7rem; color: var(--fcb-gold); opacity: 0.6; margin-top: 30px; letter-spacing: 2px; }
 
-@keyframes moveLine {
-  0% { left: -100px; }
-  100% { left: 100%; }
-}
+.data-fragment-stream { position: absolute; bottom: 25px; left: 0; width: 100%; height: 10px; overflow: hidden; }
+.fragment { position: absolute; height: 2px; background: var(--fcb-gold); width: 25px; animation: moveFragment 4s infinite linear; }
+@keyframes moveFragment { 0% { left: -50px; opacity: 0; } 10% { opacity: 0.8; } 100% { left: 110%; opacity: 0; } }
 
-/* Adds a tech-grid overlay that reacts to the cursor glow */
-.glass-container::after {
-  content: "";
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-image: radial-gradient(rgba(237, 187, 0, 0.05) 1px, transparent 1px);
-  background-size: 20px 20px;
-  pointer-events: none;
-  z-index: -1;
-}
-
-.mes-que {
-  color: #a50044;
-  font-size: 0.7rem;
-  letter-spacing: 10px;
-  font-weight: 900;
-  display: block;
-}
-
-.dashboard-title {
-  color: #edbb00;
-  font-size: 1.4rem;
-  letter-spacing: 4px;
-  margin-top: 8px;
-  font-family: 'Courier New', monospace;
-}
+.tech-corner { position: absolute; width: 20px; height: 20px; border: 2px solid var(--fcb-gold); opacity: 0.3; }
+.tl { top: 20px; left: 20px; border-right: 0; border-bottom: 0; }
+.br { bottom: 20px; right: 20px; border-left: 0; border-top: 0; }

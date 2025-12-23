@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "mic": "^2.1.2",
+    "speaker": "^0.5.5"
+  }
+}

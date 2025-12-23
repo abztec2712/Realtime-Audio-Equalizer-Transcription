@@ -1,11 +1,26 @@
-# Gradle
-   backend/.gradle/
-   backend/build/
-   backend/bin/
-   
-   # Gradle wrapper (optional - usually committed)
-   # backend/gradle/
+# --- Backend (Gradle) ---
+backend/.gradle/
+backend/build/
+backend/bin/
+backend/out/
+backend/.project
+backend/.classpath
 
-# Application.properties
-   backend/src/main/resources/application.properties
-   backend/.env
+# --- Frontend (Node/React) ---
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.eslintcache
+
+# --- Sensitive Files (CRITICAL) ---
+
+**/application.properties
+**/application.yml
+.env
+
+# --- IDE & OS Specific ---
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db

@@ -21,14 +21,12 @@ public class TranscriptionHandler implements WebSocketHandler {
     public Mono<Void> handle(WebSocketSession session) {
         System.out.println("=== WebSocket Connection Established ===");
         System.out.println("Session ID: " + session.getId());
-        
+
         // 1. INPUT STREAM: Map incoming WebSocket messages (binary audio) to a Flux<byte[]>
         Flux<byte[]> audioChunkFlux = session.receive()
             .filter(message -> message.getType() == WebSocketMessage.Type.BINARY)
             .map(WebSocketMessage::getPayload)
             .map(dataBuffer -> {
-                // Convert DataBuffer to byte array
-                // IMPORTANT: Don't manually release - Spring WebFlux handles this automatically
                 byte[] audioChunk = new byte[dataBuffer.readableByteCount()];
                 dataBuffer.read(audioChunk);
                 System.out.println("Received audio chunk: " + audioChunk.length + " bytes");
@@ -42,19 +40,20 @@ public class TranscriptionHandler implements WebSocketHandler {
         // 2. PROCESS STREAM: Pass the audio stream to the TranscriptionService
         Flux<String> transcriptionOutput = transcriptionService.transcribeStream(audioChunkFlux);
 
-        // 3. OUTPUT STREAM: Map the Flux<String> transcription back to WebSocket messages
-        return session.send(transcriptionOutput
-            .map(text -> {
-                System.out.println("Sending transcription: " + text);
-                return session.textMessage(text);
-            })
-            .doOnError(e -> {
-                System.err.println("ERROR sending transcription: " + e.getMessage());
-                e.printStackTrace();
-            })
-        )
-        .doFinally(signal -> {
-            System.out.println("=== WebSocket Connection Closed: " + signal + " ===");
-        });
+        // 3. OUTPUT STREAM: Map the Flux transcription back to WebSocket messages
+        return session.send(
+                transcriptionOutput
+                    .map(text -> {
+                        System.out.println("Sending transcription: " + text);
+                        return session.textMessage(text);
+                    })
+                    .doOnError(e -> {
+                        System.err.println("ERROR sending transcription: " + e.getMessage());
+                        e.printStackTrace();
+                    })
+            )
+            .doFinally(signal -> {
+                System.out.println("=== WebSocket Connection Closed: " + signal + " ===");
+            });
     }
 }
